@@ -1,0 +1,12 @@
+/data/*
+/Plots/*
+/Results/*
+/**/__pycache__/*
+/Correlations*/*
+/article_results/*
+**.png
+**.pdf
+**.pkl
+**.pth
+**.csv
+**.txt

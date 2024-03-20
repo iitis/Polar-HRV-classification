@@ -1,5 +1,5 @@
 """
-Copyright 2023-2024
+Copyright 2023
 Institute of Theoretical and Applied Informatics,
 Polish Academy of Sciences (ITAI PAS) https://www.iitis.pl
 
@@ -20,7 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 ---
-Polar HRV Data Analysis Library (PDAL) v 1.1
+Polar HRV Data Analysis Library (PDAL) v 1.0
 ---
 
 A source code to the paper:
@@ -55,7 +55,7 @@ import numpy as np
 from typing import List
 from retry import retry
 
-from utils_preprocessing import (
+from data_analysis.utils_preprocessing import (
     convert_absolute_time_to_timestamps_from_given_timestamp,
     interpolate_data_with_splines,
     remove_adjacent_beats,
@@ -65,7 +65,7 @@ from utils_preprocessing import (
     remove_negative_timestamps,
     select_indices_to_filtering,
 )
-from utils_basic_plots import (
+from data_analysis.utils_basic_plots import (
     plot_1D_signal,
     plot_accelerometer_data
 )
@@ -205,15 +205,15 @@ def load_and_preprocess_data_for_single_person(parameters,
     return data
 
 
-@retry((FileNotFoundError, IOError))
-def load_dataframe(folder, group, number, datatype):
+# @retry((FileNotFoundError, IOError))
+def load_dataframe(path, group, number, datatype):
     """
     Load Pandas dataframe according to the selected group
     and the number of the selected person in a given group.
 
     Arguments:
     ----------
-       *folder*: (string) folder with experiment's files
+       *path*: (string) folder with experiment's files
        *group*: (string) a kind of people's group: 'control'
                 or 'treatment'
        *number*: (int) the number of a given person in group
@@ -227,10 +227,22 @@ def load_dataframe(folder, group, number, datatype):
         return ValueError(
             'Wrong type of data. Possible options: "ACC" or "RR".')
 
-    data = pd.read_csv(
-        f'{folder}{group}_{number}.csv',
-        delimiter=';'
-    )
+    try:
+        data = pd.read_csv(
+            f'{path}{group}_{number}.csv',
+            delimiter=';'
+        )
+    except FileNotFoundError:
+        try:
+            data = pd.read_csv(
+                f'{group}_{number}.csv',
+                delimiter=';'
+            )
+        except FileNotFoundError:
+            data = pd.read_csv(
+                path,
+                delimiter=';'
+            )
     return data
 
 
@@ -307,7 +319,8 @@ def load_results_file(fname):
 
 if __name__ == "__main__":
     main_folder = (
-        '/data/anonimized_accelerometer_data/'
+        '/mnt/samba/Actual/Medical_project/Measurements_Exp_1/'
+        'Exp_1_HRV_calculations_anonimized_accelerometer_data/'
     )
 
     # Plot accelerometer data

@@ -1,5 +1,5 @@
 """
-Copyright 2023-2024
+Copyright 2023
 Institute of Theoretical and Applied Informatics,
 Polish Academy of Sciences (ITAI PAS) https://www.iitis.pl
 
@@ -20,7 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 ---
-Polar HRV Data Analysis Library (PDAL) v 1.1
+Polar HRV Data Analysis Library (PDAL) v 1.0
 ---
 
 A source code to the paper:
@@ -106,28 +106,23 @@ def filter_patients_with_quetiapine(list_of_quetiapine_patients,
 
 def compare_means_and_variances_in_groups(
         processed_data,
-        saving_folder,
-        HRV_method=None,
-        ACC_method=None):
+        HRV_method,
+        saving_folder):
     """
     Prepare a non-parametric version of the statistical test
-    comparing mean HRV or accelerometer values between the treatment
-    and the control group as well as the variance equality test
-    between two groups.
-    Warning: calculations can be made only for one of the options
+    comparing mean HRV values between the treatment and the control
+    group as well as the variance equality test between two groups.
 
     Parameters:
     ----------
       *processed_data*: (Pandas Dataframe) contains (at least) columns:
                         group to distinguish patients from the control group
-                        and 'HRV_{name of the method used}' or 'ACC_mean'
-                        with a value for the corresponding person
+                        and 'HRV_{name of the method used}' with a value
+                        for the corresponding person
+      *HRV_method*: (string) represents the name of the method used
+                    for calculation of the HRV value
       *saving_folder*: (string) contains path to the folder where results
                        should be saved
-      *HRV_method*: (string) represents the name of the method used
-                    for calculation of the HRV value, by default: None
-      *ACC_method*: (string) represents the name of the method used
-                    for calculation of the ACC values, by default: None
 
     Returns:
     --------
@@ -137,27 +132,17 @@ def compare_means_and_variances_in_groups(
       *levene_statistic*: (float) statistic of the Levene's test
       *levene_p_value*: (float) p-value for the corresponding Levene's test statistic
     """
-    assert (HRV_method is not None and ACC_method is None) \
-        or (HRV_method is None and ACC_method is not None)
-    if HRV_method is not None:
-        processed_data_HRV = processed_data[['group', f'HRV_{HRV_method}']]
-        control_values = processed_data_HRV[
-            processed_data_HRV['group'] == 'control'][f'HRV_{HRV_method}'].values
-        treatment_values = processed_data_HRV[
-            processed_data_HRV['group'] == 'treatment'][f'HRV_{HRV_method}'].values
-    elif ACC_method is not None:
-        control_values = processed_data.loc[
-            processed_data['key'] == 'control'][ACC_method].values
-        treatment_values = processed_data.loc[
-            processed_data['key'] == 'treatment'][ACC_method].values
-
-    # We test the hypothesis that HRV / accelerometer values within
-    # the treatment group is statistically significantly lower than
-    # within the control group
+    processed_data_HRV = processed_data[['group', f'HRV_{HRV_method}']]
+    control_values = processed_data_HRV[
+        processed_data_HRV['group'] == 'control'][f'HRV_{HRV_method}'].values
+    treatment_values = processed_data_HRV[
+        processed_data_HRV['group'] == 'treatment'][f'HRV_{HRV_method}'].values
+    # We test the hypothesis that HRV within the treatment group
+    # is statistically significantly lower than within the control group
     u_test_statistic, u_test_p_value = mannwhitneyu(
         treatment_values,
-        control_values
-    )
+        control_values,
+        alternative='less')
     # We test the hypothesis about variance equality between two groups
     levene_statistic, levene_p_value = levene(
         treatment_values,
