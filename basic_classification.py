@@ -1,14 +1,14 @@
 import os
-import torch
+from copy import deepcopy
 import random
+import torch
 import numpy as np
 import pandas as pd
-from copy import deepcopy
 from tsai.data.validation import combine_split_data, get_splits
 from tsai.inference import load_learner
 from tsai.models.TransformerModel import TransformerModel
 from tsai.models.RNN_FCN import GRU_FCN
-from tsai.learner import Learner
+from tsai.learner import Learner, load_all
 from tsai.metrics import accuracy
 from fastai.callback.tracker import (
     EarlyStoppingCallback,
@@ -439,7 +439,8 @@ def train_model(hyperparameters, dataloaders, path):
         ],
     )
     # Export saves best model taking into account SaveModelCallback
-    learn.export(f"./models/best_model_{path}.pth")
+    # learn.save_all(f"./models/{path}", verbose=True)
+    learn.export(f"./models/{path}.pth")
     return learn
 
 
@@ -585,7 +586,7 @@ def pipeline_train_evaluate_model(
                       steps)
        *y_validation* (Numpy array) labels for *X_validation*,
                       dimensions: (number of validation samples,)
-       *IDs_test* (Numpy array) contains person names and their positions
+       *IDs_validation* (Numpy array) contains person names and their positions
                   in the validation set (e.g. treatment_3)
        *X_test* (Numpy array) features of the test set, dimensions:
                 (number of samples, number of time steps)
@@ -626,10 +627,13 @@ def pipeline_train_evaluate_model(
     if train_model_from_scratch:
         learn = train_model(hyperparameters, dataloaders, name_for_saving_model)
         evaluate_learner = load_learner(
-            f"models/best_model_{name_for_saving_model}.pth", cpu=cpu
-        )
+            f'./models/{name_for_saving_model}.pth',
+            cpu=cpu)
     else:
-        evaluate_learner = load_learner(f"{path_of_loaded_model}", cpu=cpu)
+        evaluate_learner = load_learner(
+            f"{path_of_loaded_model}", cpu=cpu)
+        # evaluate_learner = load_all(
+        # f"{path_of_loaded_model}", verbose=True)
     # Prepare a full prediction using the validation set
     validation_fold_results = model_inference(
         X_validation,
@@ -681,9 +685,12 @@ def pipeline_train_evaluate_model(
 
     np.savez_compressed(
         full_path_for_saving_individual_results,
+        validation_predictions=validation_predictions,
+        validation_gt=y_validation,
+        validation_person_IDs=IDs_validation,
         test_predictions=test_individual_predictions,
-        gt=y_test,
-        person_IDs=IDs_test,
+        test_gt=y_test,
+        test_person_IDs=IDs_test,
     )
     print(f"Accuracy for the current fold: {final_test_accuracy}.")
     results = {
@@ -857,7 +864,7 @@ if __name__ == "__main__":
         hyperparameters["path_to_more_models"] = None
     elif mode == "evaluation":
         hyperparameters["train_model_from_scratch"] = False
-        main_path_to_models = "/media/kksiazek/Nowy/HRV_classification/"
+        main_path_to_models = "./models/"
         number_of_folds = 5
     hyperparameters["model_exact_loading_path"] = None
 
