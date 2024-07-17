@@ -270,6 +270,10 @@ def assess_individual_persons_based_on_multiple_windows(
         assert len(ground_truth) == 1
         individuals_GTs.append(ground_truth[0])
         predictions = model_predictions[indices].flatten()
+        # In some scenarios "-1" are present. They correspond to
+        # no decision for such a window.
+        indices = predictions != -1
+        predictions = predictions[indices]
         # Measure how many windows were indicated as "disease"
         disease_windows = np.count_nonzero(predictions == 1)
         disease_windows_percentage = disease_windows / predictions.shape[0]

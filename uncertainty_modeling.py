@@ -105,6 +105,17 @@ def designate_prediction_based_on_minimum_variance(predictions, variances, M):
     assert len(predictions) == (len(variances) + M - 1)
     minimum_variance = np.min(variances)
     indices_of_minimum_variance = np.argwhere(variances == minimum_variance)
+    # Alternative - currently not used.
+    # Get the second smallest element in the *variances* array, if it exists.
+    # In the opposite case get the smallest element.
+    ####################################################
+    # sorted_unique_variances = np.unique(variances)
+    # if len(sorted_unique_variances) > 1:
+    #     variance_threshold = sorted_unique_variances[1]
+    # else:
+    #     variance_threshold = sorted_unique_variances[0]
+    # indices_of_minimum_variance = np.argwhere(variances <= variance_threshold)
+    ####################################################
     # Get the longest range having the smallest variance
     start_index, end_index = find_max_consecutive_range(
         indices_of_minimum_variance)
@@ -124,7 +135,7 @@ def plot_combined_variance_RR_predictions_for_individual(
     title_prefix=None
 ):
     """
-    Prepare a plot with combined results of analysis. 
+    Prepares a plot with combined results of analysis.
     The first subplot presents R-R interval data values in consecutive
     timesteps.
     The second subplot presents rolling variances based on subsequent
@@ -200,6 +211,94 @@ def plot_combined_variance_RR_predictions_for_individual(
     plt.close()
 
 
+def plot_combined_RR_predictions_different_methods(
+        evaluation_results_multiple_methods,
+        title_prefix=None):
+    """
+    Prepares a plot with combined results of method predictions.
+    The first subplot presents R-R interval data values in consecutive
+    timesteps.
+    The second, third and fourth subplots present predictions of the methods:
+    XGBoost, SVM_ensemble and GRU_FCN.
+    Green lines correspond to correct predictions, red lines are related
+    to the opposite case.
+
+    Arguments:
+    ----------
+       *evaluation_results_multiple_methods* a dictionary containing
+                                             the following keys:
+         -evaluation_{XGBoost,SVM_ensemble,GRU_FCN}- (numpy.ndarray) 1's
+                    correspond to correct predictions, 0's denote wrong
+                    predictions; one prediction per single window for the
+                    three methods: XGBoost, SVM_ensemble and GRU_FCN
+         -mean_RR_values- (numpy.ndarray) mean values of R-R intervals from
+                        consecutive time windows: a single value represents
+                        a single window
+         -group_of_individual- (str) represents name of the group of the
+                               selected person ('control' or 'treatment')
+         -ID_of_individual- (int) ID of the selected person without its group
+         -result_path- (str) stores path for saving results
+       *title_prefix* (default: None) represents the first part of the
+                       filename storing the created plot
+    """
+    fig, (ax1, ax2, ax3, ax4) = plt.subplots(
+        4, figsize=(10, 3.5), sharex=True,
+        gridspec_kw={'height_ratios': [2, 1, 1, 1]})
+    x_axis = np.arange(
+        0, evaluation_results_multiple_methods['mean_RR_values'].shape[0], 1)
+    ax1.plot(x_axis,
+             evaluation_results_multiple_methods['mean_RR_values'],
+             '-', color='red')
+    ax1.set_ylabel('R-R value')
+    ax1.set_xlim(
+        0, evaluation_results_multiple_methods['mean_RR_values'].shape[0])
+    ax1.tick_params(axis='y', labelsize=9)
+    for axis, method in [
+        [ax2, 'XGBoost'],
+        [ax3, 'SVM_ensemble'],
+        [ax4, 'GRU_FCN']
+    ]:
+        for i, value in enumerate(evaluation_results_multiple_methods[method]):
+            if value == 1:
+                axis.axvline(x=i, color='green', linestyle='-', linewidth=1)
+                predicted_class = evaluation_results_multiple_methods[
+                    "group_of_individual"]
+            else:
+                axis.axvline(x=i, color='red', linestyle='-', linewidth=1)
+                if evaluation_results_multiple_methods[
+                  "group_of_individual"] == 'treatment':
+                    predicted_class = 'control'
+                else:
+                    predicted_class = 'treatment'
+        axis.set_xlim(0, evaluation_results_multiple_methods['mean_RR_values'].shape[0])
+        axis.yaxis.set_ticklabels([])
+        axis.set_ylabel('Prediction', fontsize=8)
+        axis.set_title(f'Method: {method}', fontsize=9)
+    ax4.set_xlabel('Index of time window', fontsize=9)
+    ax4.tick_params(axis='x', labelsize=9)
+    ax1.set_title(f"R-R values and method predictions in time, ground truth class: "
+                  f"{evaluation_results_multiple_methods['group_of_individual']}, "
+                  f"ID: {evaluation_results_multiple_methods['ID_of_individual']}, "
+                  f"predicted class: {predicted_class}",
+                  fontsize=9)
+    handles = [
+        plt.Line2D([0], [0], color='green', lw=2, label='correct prediction'),
+        plt.Line2D([0], [0], color='red', lw=2, label='wrong prediction')
+    ]
+    plt.tight_layout(rect=[0, 0.025, 1, 1])
+    plt.legend(handles=handles, loc='upper center',
+               bbox_to_anchor=(0.5, -1.25), ncol=2, fontsize=9)
+    os.makedirs(evaluation_results_multiple_methods['result_path'],
+                exist_ok=True)
+    if title_prefix is None:
+        title_prefix = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    plt.savefig(f"{evaluation_results_multiple_methods['result_path']}{title_prefix}_"
+                f"{evaluation_results_multiple_methods['group_of_individual']}_"
+                f"{evaluation_results_multiple_methods['ID_of_individual']}.pdf",
+                dpi=500)
+    plt.close()
+
+
 def uncertainty_modeling_for_selected_person(input_individuals,
                                              individual_data,
                                              fold,
@@ -230,6 +329,11 @@ def uncertainty_modeling_for_selected_person(input_individuals,
     elif "test_person_IDs" in individual_data:
         person_identification_key = "test_person_IDs"
         ground_truth_key = "test_gt"
+    elif ("GRU_FCN" in individual_data and
+          "test_person_IDs" in individual_data["GRU_FCN"]):
+        person_identification_key = "test_person_IDs"
+        ground_truth_key = "test_gt"
+        individual_data = individual_data["GRU_FCN"]
     else:
         raise ValueError("Wrong keys in the dictionary with data")
     indices_of_selected_individual = np.argwhere(
@@ -280,6 +384,8 @@ def uncertainty_modeling_for_selected_person(input_individuals,
         "result_path": save_result_path,
         "minimum_variance_prediction": minimum_variance_prediction,
         "ground_truth": ground_truth_value,
+        "mean_RR_values": mean_RR_values_for_selected_individual,
+        "evaluation": evaluation,
     }
     if prepare_plot:
         plot_combined_variance_RR_predictions_for_individual(
@@ -364,9 +470,9 @@ if __name__ == "__main__":
     test_find_max_consecutive_range()
     timestep = 60  # 60 or 300
     time_window_range = 60
-    prepare_plot = True
+    prepare_plot = False
     mode = 'five_folds'  # options: 'five_folds', 'LOOCV'
-    method = 'SVM_ensemble'  # 'XGBoost', 'GRU_FCN', "SVM_ensemble"
+    method = 'multiple'  # 'XGBoost', 'GRU_FCN', "SVM_ensemble", "multiple"
     input_data_path = (
         f'../data/classification/equal_sizes/{timestep}/'
         f'individual_measurements_window_{timestep}_5_folds.pkl'
@@ -383,6 +489,19 @@ if __name__ == "__main__":
         elif method == "SVM_ensemble":
             load_result_path = './SVM_ensemble_results/'
             seeds = [1]
+        elif method == "multiple":
+            prefix_result_path = "./"
+            folds_seeds_set_GRU = {
+                0: 3, 1: 2, 2: 5, 3: 2, 4: 2
+            }
+            # Seed value does not matter for XGBoost and SVM + ensemble,
+            # just for GRU+FCN. It will be modified further, according to the
+            # fold number
+            seeds = [1]
+            load_result_GRU = f"{prefix_result_path}GRU_FCN_results/"
+            load_result_XGBoost = f"{prefix_result_path}XGBoost_results/"
+            load_result_SVM_ensemble = f"{prefix_result_path}SVM_ensemble_results/"
+
     elif mode == 'LOOCV':
         save_result_path = './Results/rolling_model_evaluation/LOOCV/'
         folds = list(range(0, 60))
@@ -418,6 +537,24 @@ if __name__ == "__main__":
                 load_result_file = f'XGB_fold_{fold}.npz'
             elif method == 'SVM_ensemble':
                 load_result_file = f'mch_segment_results_fold_{fold}.npz'
+            elif method == 'multiple':
+                seed = folds_seeds_set_GRU[fold]
+                GRU_FCN_results_file = (
+                    f'{load_result_GRU}'
+                    f'summary_results_GRU_FCN_part_single_training_timestep_{timestep}_'
+                    f'fold_{fold}_seed_{seed}_individual_preds.npz'
+                )
+                XGBoost_file = f'{load_result_XGBoost}XGB_fold_{fold}.npz'
+                SVM_ensemble_file = f'{load_result_SVM_ensemble}mch_segment_results_fold_{fold}.npz'
+                individual_data = {}
+                for model, results_file in [
+                    ['GRU_FCN', GRU_FCN_results_file],
+                    ['XGBoost', XGBoost_file],
+                    ['SVM_ensemble', SVM_ensemble_file]
+                ]:
+                    individual_data[model] = np.load(
+                        f'{results_file}',
+                        allow_pickle=True)
             else:
                 raise ValueError("For this method 'five_folds' results are not available!")
             loaded_key = 'test_person_IDs'
@@ -430,11 +567,14 @@ if __name__ == "__main__":
             else:
                 raise ValueError("For this method 'five_folds' results are not available!")
             loaded_key = 'person_IDs'
-        individual_data = np.load(f'{load_result_path}{load_result_file}',
-                                  allow_pickle=True)
+        try:
+            individual_data
+        except NameError:
+            individual_data = np.load(f'{load_result_path}{load_result_file}',
+                                      allow_pickle=True)
         #######
         # TEST: checks whether ground truth arrays are the same
-        if method != 'GRU_FCN':
+        if method not in ['GRU_FCN', 'multiple']:
             correction_individual_data = np.load(
                 './GRU_FCN_results/'
                 f'summary_results_GRU_FCN_part_single_training_timestep_{timestep}_'
@@ -443,64 +583,102 @@ if __name__ == "__main__":
             )
             # Validity checking
             proper_gt = correction_individual_data["test_gt"].astype(int)
-            current_gt = individual_data["test_gt"].astype(int)
+            try:
+                current_gt = individual_data["test_gt"].astype(int)
+                current_persons_IDs = individual_data["test_person_IDs"]
+            except KeyError:
+                current_gt = individual_data["GRU_FCN"]["test_gt"].astype(int)
+                current_persons_IDs = individual_data["GRU_FCN"]["test_person_IDs"]
+
             assert_array_equal(proper_gt, current_gt)
             proper_persons_IDs = correction_individual_data["test_person_IDs"]
-            current_persons_IDs = individual_data["test_person_IDs"]
             assert_array_equal(proper_persons_IDs, current_persons_IDs)
         #######
-        get_all_person_IDs = np.unique(individual_data[loaded_key])
+        try:
+            get_all_person_IDs = np.unique(individual_data[loaded_key])
+        except KeyError:
+            get_all_person_IDs = np.unique(individual_data['GRU_FCN'][loaded_key])
+        ####
         for selected_individual in get_all_person_IDs:
-            single_result = uncertainty_modeling_for_selected_person(
-                input_individuals,
-                individual_data,
-                fold,
-                seed,
-                selected_individual,
-                time_window_range,
-                save_result_path,
-                prepare_plot=prepare_plot
-            )
-            all_individuals_statistics.append(
-                [
-                    single_result["group_of_individual"],
-                    single_result["ID_of_individual"],
+            print(f'Calculations for fold {fold} and {selected_individual}.')
+            if method == 'multiple':
+                evaluation_results_multiple_methods = {}
+                for model in list(individual_data.keys()):
+                    single_result = uncertainty_modeling_for_selected_person(
+                        input_individuals,
+                        individual_data[model],
+                        fold,
+                        seed,
+                        selected_individual,
+                        time_window_range,
+                        save_result_path,
+                        prepare_plot=False
+                    )
+                    evaluation_results_multiple_methods[model] = single_result[
+                        'evaluation']
+                evaluation_results_multiple_methods['mean_RR_values'] = single_result[
+                    'mean_RR_values']
+                evaluation_results_multiple_methods['group_of_individual'] = single_result[
+                    'group_of_individual']
+                evaluation_results_multiple_methods['ID_of_individual'] = single_result[
+                    'ID_of_individual']
+                evaluation_results_multiple_methods['result_path'] = save_result_path
+                title_prefix = f"fold_{fold}_seed_{seed}_time_range_{time_window_range}"
+                plot_combined_RR_predictions_different_methods(
+                    evaluation_results_multiple_methods,
+                    title_prefix=title_prefix)
+            else:
+                single_result = uncertainty_modeling_for_selected_person(
+                    input_individuals,
+                    individual_data,
                     fold,
                     seed,
+                    selected_individual,
                     time_window_range,
-                    single_result["statistics"],
-                    single_result["p_value"],
-                    single_result["minimum_variance_prediction"],
-                    single_result["ground_truth"]
-                ]
-            )
-    dataframe = pd.DataFrame(
-        all_individuals_statistics,
-        columns=[
-            'group', 'ID', 'fold', 'seed', 'time_window_range',
-            'correlation', 'p_value', 'minimum_variance_prediction',
-            'ground_truth']
-    )
-    dataframe.to_csv(
-        f"{save_result_path}summary_results_variance_correlation.csv",
-        sep=';'
-    )
-    # Get average results
-    # Step 1: Determine if each prediction is correct
-    dataframe['correct'] = dataframe['minimum_variance_prediction'] == \
-        dataframe['ground_truth']
-    # Step 2: Group by "fold" and "seed" to calculate the average accuracy
-    # for each combination
-    accuracy_per_seed_fold = dataframe.groupby(['fold', 'seed'])[
-        'correct'].mean().reset_index()
-    # Step 3: Average the accuracies across different "seeds" for each "fold"
-    average_accuracy_per_fold = accuracy_per_seed_fold.groupby('fold')[
-        'correct'].mean().reset_index()
-    # Step 4: Average the accuracies across all folds
-    overall_average_accuracy = average_accuracy_per_fold['correct'].mean()
+                    save_result_path,
+                    prepare_plot=prepare_plot
+                )
+                all_individuals_statistics.append(
+                    [
+                        single_result["group_of_individual"],
+                        single_result["ID_of_individual"],
+                        fold,
+                        seed,
+                        time_window_range,
+                        single_result["statistics"],
+                        single_result["p_value"],
+                        single_result["minimum_variance_prediction"],
+                        single_result["ground_truth"]
+                    ]
+                )
+    if method != "multiple":
+        dataframe = pd.DataFrame(
+            all_individuals_statistics,
+            columns=[
+                'group', 'ID', 'fold', 'seed', 'time_window_range',
+                'correlation', 'p_value', 'minimum_variance_prediction',
+                'ground_truth']
+        )
+        dataframe.to_csv(
+            f"{save_result_path}summary_results_variance_correlation.csv",
+            sep=';'
+        )
+        # Get average results
+        # Step 1: Determine if each prediction is correct
+        dataframe['correct'] = dataframe['minimum_variance_prediction'] == \
+            dataframe['ground_truth']
+        # Step 2: Group by "fold" and "seed" to calculate the average accuracy
+        # for each combination
+        accuracy_per_seed_fold = dataframe.groupby(['fold', 'seed'])[
+            'correct'].mean().reset_index()
+        # Step 3: Average the accuracies across different "seeds" for each "fold"
+        average_accuracy_per_fold = accuracy_per_seed_fold.groupby('fold')[
+            'correct'].mean().reset_index()
+        # Step 4: Average the accuracies across all folds
+        overall_average_accuracy = average_accuracy_per_fold['correct'].mean()
 
-    # Save results averaged per folds
-    average_accuracy_per_fold.to_csv(
-        f"{save_result_path}summary_results_averaged_per_fold.csv",
-        sep=';'
-    )
+        # Save results averaged per folds
+        average_accuracy_per_fold.to_csv(
+            f"{save_result_path}summary_results_averaged_per_fold.csv",
+            sep=';'
+        )
