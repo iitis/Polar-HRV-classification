@@ -5,10 +5,10 @@ HRV and accelerometer data analysis based on measurements from Polar H10 wearabl
 
 It is a source code related to the paper:
 
-> Machine learning approach for the classification of psychotic disorder patients using RR intervals collected with a Polar H10 sensor
+> Deep learning approach for automatic assessment of schizophrenia and bipolar disorder in patients using R-R intervals
 
 Authors:
-- Kamil Książek (ITAI PAS, ORCID ID: [0000-0002-0201-6220](https://orcid.org/0000-0002-0201-6220)),
+- Kamil Książek (FMC JU, ITAI PAS, ORCID ID: [0000-0002-0201-6220](https://orcid.org/0000-0002-0201-6220)),
 - Wilhelm Masarczyk (FMS MUS, ORCID ID: [0000-0001-9516-0709](https://orcid.org/0000-0001-9516-0709)),
 - Przemysław Głomb (ITAI PAS, ORCID ID: [0000-0002-0215-4674](https://orcid.org/0000-0002-0215-4674)),
 - Michał Romaszewski (ITAI PAS, ORCID ID: [0000-0002-8227-929X](https://orcid.org/0000-0002-8227-929X)),
@@ -18,6 +18,7 @@ Authors:
 - Piotr Gorczyca (FMS UMS, ORCID ID: [0000-0002-9419-7988](https://orcid.org/0000-0002-9419-7988)),
 - Magdalena Piegza (FMS UMS, ORCID ID: [0000-0002-8009-7118](https://orcid.org/0000-0002-8009-7118)).
 
+*FMC JU* - Faculty of Mathematics and Computer Science, Jagiellonian University, Kraków, Poland; 
 *ITAI PAS* - Institute of Theoretical and Applied Informatics, Polish Academy of Sciences, Gliwice, Poland;  
 *FMS UMS* - Faculty of Medical Sciences in Zabrze, Medical University of Silesia, Tarnowskie Góry, Poland;  
 *PDMH* - Psychiatric Department of the Multidisciplinary Hospital, Tarnowskie Góry, Poland;  
@@ -31,7 +32,7 @@ Institute of Theoretical and Applied Informatics,
 Polish Academy of Sciences (ITAI PAS) https://www.iitis.pl
 
 The main author of the code:
-- Kamil Książek (ITAI PAS, ORCID ID: [0000-0002-0201-6220](https://orcid.org/0000-0002-0201-6220)).
+- Kamil Książek (FMC JU, ITAI PAS, ORCID ID: [0000-0002-0201-6220](https://orcid.org/0000-0002-0201-6220)).
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
